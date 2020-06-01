@@ -1,0 +1,8 @@
+# ignore the json permissions file
+permissions.json
+
+# ignore log files
+*.log
+
+# ignore the virtual environment if it wasn't already
+venv/
