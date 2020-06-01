@@ -6,3 +6,7 @@ permissions.json
 
 # ignore the virtual environment if it wasn't already
 venv/
+
+# ignore the .idea and pycache directories from pycharm
+.idea/
+__pycache__/
