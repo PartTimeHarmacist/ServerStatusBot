@@ -93,19 +93,46 @@ async def status(ctx: discord.ext.commands.context, *servers: str):
         servers = perm_check(ctx)
         autofilled = True
 
-    embed = discord.Embed(title="Server Statuses")
-    async with ctx.typing():
-        for server in servers:
-            if server in perm_check(ctx):
-                try:
-                    embed.add_field(name=server, value=docker_client.containers.get(server).status, inline=True)
-                except docker.errors.NotFound:
+    if len(servers) > 1:
+        embed = discord.Embed(title="Server Statuses")
+        async with ctx.typing():
+            for server in servers:
+                if server in perm_check(ctx):
+                    try:
+                        embed.add_field(name=server,
+                                        value=docker_client.containers.get(server).status.title(),
+                                        inline=True)
+                    except docker.errors.NotFound:
+                        embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
+                elif not autofilled:
+                    log_unauthorized(ctx, server)
                     embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
-            elif not autofilled:
-                log_unauthorized(ctx, server)
-                embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
 
-    await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
+    else:
+        embed = discord.Embed(title=f"{servers[0]} Status Report")
+        async with ctx.typing():
+            for server in servers:
+                if server in perm_check(ctx):
+                    try:
+                        container = docker_client.containers.get(server)
+
+                        embed.add_field(name="Docker Status", value=container.status.title())
+
+                        if container.status == 'running':
+                            embed.add_field(name="Server Uptime",
+                                            value=container.exec_run("uptime").output.decode('utf-8'))
+                            embed.add_field(name="Log Tail",
+                                            value=container.exec_run("tail logs/latest.log").output.decode('utf-8'))
+                            embed.add_field(name="World Size (Minecraft)",
+                                            value=container.exec_run("du -h world/level.dat").output.decode('utf-8'))
+
+                    except docker.errors.NotFound:
+                        embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
+                elif not autofilled:
+                    log_unauthorized(ctx, server)
+                    embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
+        await ctx.send(embed=embed)
 
 
 @bot.command()
@@ -152,7 +179,7 @@ async def kill(ctx, *servers: str):
 @bot.command()
 async def start(ctx, *servers: str):
     """Starts the specified carinae server.  Does nothing if the specified server is already running."""
-    log(f"Executing the kill command for {','.join([server for server in servers])} from {ctx.channel}")
+    log(f"Executing the start command for {','.join([server for server in servers])} from {ctx.channel}")
     embed = discord.Embed(title="Start Results")
     for server in servers:
         if server in perm_check(ctx):
@@ -236,12 +263,21 @@ async def permissions(ctx, action: str, user: str, target: str, perm: str):
         log(f"{action.title()} {perm} permissions to {user} for server {target} at the request of admin {ctx.author}"
             f" (id: {ctx.author.id}) executed successfully.")
 
-        # TODO: add a countdown emoji until the deletion of the message
-        # for i in range(5, 0, -1):
-        #    await ctx.message.add_reaction(emojis["keycap_" + i])
-        #    sleep(1)
+        if ctx.channel.type not in [discord.ChannelType.private, discord.ChannelType.group]:
+            # TODO: add a countdown emoji until the deletion of the message
+            # for i in range(5, 0, -1):
+            #    await ctx.message.add_reaction(emojis["keycap_" + i])
+            #    sleep(1)
+            await ctx.message.delete(delay=5.0)
 
-        await ctx.message.delete(delay=5.0)
+        if ctx.author.dm_channel:
+            await ctx.author.create_dm()
+
+        async with ctx.author.dm_channel.typing():
+            await ctx.author.dm_channel.send(f"Requested permissions change has been processed:\n"
+                                             f"```\n{action.title()} {perm} permissions to {user} for server"
+                                             f" {target} at the request of {ctx.author} (id: {ctx.author.id})```")
+
     else:
         log_unauthorized(ctx, "PERMISSIONS_FILE")
 
