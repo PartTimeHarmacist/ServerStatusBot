@@ -110,22 +110,25 @@ async def status(ctx: discord.ext.commands.context, *servers: str):
 
         await ctx.send(embed=embed)
     else:
-        embed = discord.Embed(title=f"{servers[0]} Status Report")
+        embed = discord.Embed(title=f"{servers[0]} Detailed Status Report")
         async with ctx.typing():
             for server in servers:
                 if server in perm_check(ctx):
                     try:
                         container = docker_client.containers.get(server)
 
-                        embed.add_field(name="Docker Status", value=container.status.title())
+                        embed.add_field(name="Docker Status", value=container.status.title(), inline=True)
 
                         if container.status == 'running':
                             embed.add_field(name="Server Uptime",
-                                            value=container.exec_run("uptime").output.decode('utf-8'))
-                            embed.add_field(name="Log Tail",
-                                            value=container.exec_run("tail logs/latest.log").output.decode('utf-8'))
+                                            value=container.exec_run("uptime").output.decode('utf-8'),
+                                            inline=True)
                             embed.add_field(name="World Size (Minecraft)",
-                                            value=container.exec_run("du -h world/level.dat").output.decode('utf-8'))
+                                            value=container.exec_run("du -h world/level.dat").output.decode('utf-8'),
+                                            inline=True)
+                            embed.add_field(name="Log Tail",
+                                            value=container.exec_run("tail logs/latest.log").output.decode('utf-8'),
+                                            inline=False)
 
                     except docker.errors.NotFound:
                         embed.add_field(name=server, value="Not Found/Invalid Name", inline=True)
