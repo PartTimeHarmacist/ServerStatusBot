@@ -318,19 +318,17 @@ async def get_logs(ctx, server: str, numlines: int = 10):
         _numlines = 10
 
     if server in perm_check(ctx):
-        if _numlines > 20:
-            _numlines = 20
         container = docker_client.containers.get(server)
         log_command = f"tail -n{_numlines} logs/latest.log"
         result = container.exec_run(log_command).output.decode('utf-8')
-        bloc_size = 1994    # messages longer than 2000 total characters will be rejected by discord.
-                            # this is a hard coded limit imposed by discord.
+
         async with ctx.channel.typing():
-            if len(result) > bloc_size:
-                for bloc in [result[i:i+bloc_size] for i in range(0, len(result), len(result)//bloc_size)]:
-                    await ctx.send(f'```{bloc}```')
-            else:
+            try:
                 await ctx.send(f'```{result}```')
+            except discord.HTTPException:
+                ctx.command_failed = True
+                await ctx.send(f"Failed to retrieve log results.  Result length shows to be {len(result)}" 
+                               f" - discord's limit is 2000 per message.")
     else:
         log_unauthorized(ctx, server)
 
