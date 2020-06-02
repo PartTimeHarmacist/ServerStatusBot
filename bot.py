@@ -127,7 +127,7 @@ async def status(ctx: discord.ext.commands.context, *servers: str):
                                             value=container.exec_run("du -h world/level.dat").output.decode('utf-8'),
                                             inline=True)
                             embed.add_field(name="Log Tail",
-                                            value=container.exec_run("tail -n5 logs/latest.log").output.decode('utf-8'),
+                                            value=container.exec_run("tail -n3 logs/latest.log").output.decode('utf-8'),
                                             inline=False)
 
                     except docker.errors.NotFound:
