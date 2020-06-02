@@ -67,3 +67,5 @@ TODO
     - While useful, I would like to pretty it up a bit or reformat it
 - [ ] Flask Interface?
     - This may be split off into another project, instead of combining the flask interface with the discord bot.
+- [X] Limit logfile trailing of detailed status command
+- [X] Create log command to get the last x number of lines in a log file

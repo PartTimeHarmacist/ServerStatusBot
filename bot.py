@@ -127,7 +127,7 @@ async def status(ctx: discord.ext.commands.context, *servers: str):
                                             value=container.exec_run("du -h world/level.dat").output.decode('utf-8'),
                                             inline=True)
                             embed.add_field(name="Log Tail",
-                                            value=container.exec_run("tail logs/latest.log").output.decode('utf-8'),
+                                            value=container.exec_run("tail -n3 logs/latest.log").output.decode('utf-8'),
                                             inline=False)
 
                     except docker.errors.NotFound:
@@ -200,8 +200,19 @@ async def start(ctx, *servers: str):
 
 @bot.command(enabled=False, aliases=["command", "send"])
 async def cmd(ctx, server: str, command: str):
-    """Sends the specified command to the specified server.  Not Yet Implemented."""
-    pass
+    """Sends the specified command to the specified server via exec -dt syntax"""
+    log(f"Executing remote command function imposed by {ctx.author} (id: {ctx.author.id}) for server {server}"
+        f" - command: {command}")
+    async with ctx.typing():
+        if server in perm_check(ctx):
+            try:
+                container = docker_client.containers.get(server)
+                cmd_output = container.exec_run(command).output.decode('utf-8')
+                await ctx.send(f"Command output:\n{cmd_output}")
+            except docker.errors.NotFound:
+                await ctx.send(f"Server {server} Not Found/Invalid Name")
+        else:
+            log_unauthorized(ctx, server)
 
 
 @bot.command(enabled=False)
@@ -225,7 +236,7 @@ async def list_backups(ctx, server: str):
 
 
 @bot.command(hidden=True)
-async def uptime(ctx):
+async def bot_uptime(ctx):
     """Gets the current uptime of the bot.  Used for debugging."""
     log(f"Uptime requested for {ctx.channel}")
     await ctx.send(f"Bot has been up for {datetime.datetime.now() - uptime_start}")
@@ -246,7 +257,8 @@ async def permissions(ctx, action: str, user: str, target: str, perm: str):
                 "restore": [],
                 "start": [],
                 "status": [],
-                "stop": []
+                "stop": [],
+                "get_logs": [],
             })
 
         target_user = str(user) if len(ctx.message.mentions) == 0 else str(ctx.message.mentions[0].id)
@@ -273,7 +285,7 @@ async def permissions(ctx, action: str, user: str, target: str, perm: str):
             #    sleep(1)
             await ctx.message.delete(delay=5.0)
 
-        if ctx.author.dm_channel:
+        if not ctx.author.dm_channel:
             await ctx.author.create_dm()
 
         async with ctx.author.dm_channel.typing():
@@ -292,6 +304,27 @@ async def dump_perms(ctx):
         await ctx.send(f"```json\n{json.dumps(json_permissions, indent=4, sort_keys=True)}```")
     else:
         log_unauthorized(ctx, "DEBUG_FUNCTION")
+
+
+@bot.command()
+async def get_logs(ctx, server: str, numlines: int = 10):
+    """Pulls the specified number of lines from the logs/latest.log file, up to a maximum of 20 lines."""
+    log(f"Log retrieval command executed for server {server} by {ctx.author} (id: {ctx.author.id})")
+    if numlines is not int:
+        log(f"Log command was passed with invalid number argument of '{numlines}' - command rejected.")
+    elif server in perm_check(ctx):
+        if numlines > 20:
+            numlines = 20
+        container = docker_client.containers.get(server)
+        log_command = f"tail -n{numlines} logs/latest.log"
+        result = container.exec_run(log_command).output.decode('utf-8')
+        bloc_size = 1994    # messages longer than 2000 total characters will be rejected by discord.
+                            # this is a hard coded limit imposed by discord.
+        async with ctx.channel.typing():
+            for bloc in [result[i:i+bloc_size] for i in range(0, len(result), len(result)//bloc_size)]:
+                await ctx.send(f'```{bloc}```')
+    else:
+        log_unauthorized(ctx, server)
 
 
 if __name__ == "__main__":
