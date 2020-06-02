@@ -310,13 +310,18 @@ async def dump_perms(ctx):
 async def get_logs(ctx, server: str, numlines: int = 10):
     """Pulls the specified number of lines from the logs/latest.log file, up to a maximum of 20 lines."""
     log(f"Log retrieval command executed for server {server} by {ctx.author} (id: {ctx.author.id})")
-    if numlines is not int:
-        log(f"Log command was passed with invalid number argument of '{numlines}' - command rejected.")
-    elif server in perm_check(ctx):
-        if numlines > 20:
-            numlines = 20
+    _numlines = None
+    try:
+        _numlines = int(numlines)
+    except ValueError:
+        ctx.send(f"Numlines value of {numlines} is invalid, defaulting to 10.")
+        _numlines = 10
+        
+    if server in perm_check(ctx):
+        if _numlines > 20:
+            _numlines = 20
         container = docker_client.containers.get(server)
-        log_command = f"tail -n{numlines} logs/latest.log"
+        log_command = f"tail -n{_numlines} logs/latest.log"
         result = container.exec_run(log_command).output.decode('utf-8')
         bloc_size = 1994    # messages longer than 2000 total characters will be rejected by discord.
                             # this is a hard coded limit imposed by discord.
