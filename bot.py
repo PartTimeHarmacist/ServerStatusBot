@@ -316,7 +316,7 @@ async def get_logs(ctx, server: str, numlines: int = 10):
     except ValueError:
         ctx.send(f"Numlines value of {numlines} is invalid, defaulting to 10.")
         _numlines = 10
-        
+
     if server in perm_check(ctx):
         if _numlines > 20:
             _numlines = 20
@@ -326,7 +326,10 @@ async def get_logs(ctx, server: str, numlines: int = 10):
         bloc_size = 1994    # messages longer than 2000 total characters will be rejected by discord.
                             # this is a hard coded limit imposed by discord.
         async with ctx.channel.typing():
-            for bloc in [result[i:i+bloc_size] for i in range(0, len(result), len(result)//bloc_size)]:
+            if len(result) > bloc_size:
+                for bloc in [result[i:i+bloc_size] for i in range(0, len(result), len(result)//bloc_size)]:
+                    await ctx.send(f'```{bloc}```')
+            else:
                 await ctx.send(f'```{bloc}```')
     else:
         log_unauthorized(ctx, server)
