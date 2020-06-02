@@ -330,7 +330,7 @@ async def get_logs(ctx, server: str, numlines: int = 10):
                 for bloc in [result[i:i+bloc_size] for i in range(0, len(result), len(result)//bloc_size)]:
                     await ctx.send(f'```{bloc}```')
             else:
-                await ctx.send(f'```{bloc}```')
+                await ctx.send(f'```{result}```')
     else:
         log_unauthorized(ctx, server)
 
