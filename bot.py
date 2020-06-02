@@ -8,6 +8,8 @@ from time import sleep
 from discord.ext import commands
 from pathlib import Path
 
+arg_dict = dict((arg[2:], val) for arg, val in [arg.split("=") for arg in sys.argv[1:] if arg.startswith("--")])
+
 LOGFILE = "./latest.log"
 PERMISSIONS_FILE = "./permissions.json"
 
