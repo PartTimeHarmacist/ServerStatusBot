@@ -4,7 +4,6 @@ import datetime
 import json
 import discord
 import docker
-from time import sleep
 from discord.ext import commands
 from pathlib import Path
 
